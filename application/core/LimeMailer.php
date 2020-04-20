@@ -295,10 +295,11 @@ class LimeMailer extends \PHPMailer\PHPMailer\PHPMailer
             throw new \CException("Survey must be set before set token");
         }
         /* Did need to check all here ? */
-        $oToken =  \Token::model($this->surveyId)->findByToken($token)->decrypt();
+        $oToken =  \Token::model($this->surveyId)->findByToken($token);
         if (empty($oToken)) {
             throw new \CException("Invalid token");
         }
+        $oToken = $oToken->decrypt();
         $this->oToken = $oToken;
         $this->mailLanguage = Survey::model()->findByPk($this->surveyId)->language;
         if (in_array($oToken->language, Survey::model()->findByPk($this->surveyId)->getAllLanguages())) {
