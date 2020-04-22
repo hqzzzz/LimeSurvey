@@ -412,6 +412,9 @@ class GlobalSettings extends Survey_Common_Action
             $oSurvey->gsid = 0;
             $oSurvey->usecaptcha = Survey::saveTranscribeCaptchaOptions();
 
+            //todo: when changing ipanonymiez from "N" to "Y", call the function that anonymizes the ip-addresses
+
+
             if ($oSurvey->save()) {
                 $bRedirect = 1;
             }

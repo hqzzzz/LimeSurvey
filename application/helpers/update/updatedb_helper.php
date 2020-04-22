@@ -3066,6 +3066,24 @@ function db_upgrade_all($iOldDBVersion, $bSilent = false)
             $oDB->createCommand()->update('{{settings_global}}', array('stg_value' => 425), "stg_name='DBVersion'");
             $oTransaction->commit();
         }
+        if($iOldDBVersion < 426){
+            $oTransaction = $oDB->beginTransaction();
+
+            $oDB->createCommand()->addColumn('{{surveys_groupsettings}}', 'ipanonymize', "string(1) NOT NULL default 'N'");
+            $oDB->createCommand()->addColumn('{{surveys}}', 'ipanonymize', "string(1) NOT NULL default 'N'");
+
+            //all groups (except default group gsid=0), must have inheritance value
+            $oDB->createCommand()->update('{{surveys_groupsettings}}',array('ipanonymize' => 'I'), 'gsid<>0');
+
+            //change gsid=1 for inheritance logic ...(redundant, but for better understanding and securit)
+            $oDB->createCommand()->update('{{surveys_groupsettings}}',array('ipanonymize' => 'I'), 'gsid=1');
+
+            //for all non active surveys,the value must be "I" for inheritance ...
+            $oDB->createCommand()->update('{{surveys}}', array('ipanonymize' => 'I'), "active='N'");
+
+            $oDB->createCommand()->update('{{settings_global}}', array('stg_value' => 426), "stg_name='DBVersion'");
+            $oTransaction->commit();
+        }
     } catch (Exception $e) {
         Yii::app()->setConfig('Updating', false);
         $oTransaction->rollback();
@@ -3544,13 +3562,25 @@ function createSurveysGroupSettingsTable(CDbConnection $oDB)
     $settings1->showgroupinfo = ($globalSetting2 === false || $globalSetting2['stg_value'] == 'choose') ? 'B' : str_replace(array('both', 'name', 'description', 'none'), array('B', 'N', 'D', 'X'), $globalSetting2['stg_value']);
     $settings1->shownoanswer = ($globalSetting3 === false || $globalSetting3['stg_value'] == '2') ? 'Y' : str_replace(array('1', '0'), array('Y', 'N'), $globalSetting3['stg_value']);
     $settings1->showxquestions = ($globalSetting4 === false || $globalSetting4['stg_value'] == 'choose') ? 'Y' : str_replace(array('show', 'hide'), array('Y', 'N'), $globalSetting4['stg_value']);
-    $oDB->createCommand()->insert("{{surveys_groupsettings}}", $settings1->attributes);
+
+    // Quick hack to remote ipanonymize.
+    // TODO: Don't use models in updatedb_helper.
+    $attributes = $settings1->attributes;
+    unset($attributes['ipanonymize']);
+
+    $oDB->createCommand()->insert("{{surveys_groupsettings}}", $attributes);
 
     // insert settings for default survey group
     $settings2 = new SurveysGroupsettings;
     $settings2->setToInherit();
     $settings2->gsid = 1;
-    $oDB->createCommand()->insert("{{surveys_groupsettings}}", $settings2->attributes);
+
+    // Quick hack to remote ipanonymize.
+    // TODO: Don't use models in updatedb_helper. ok
+    $attributes = $settings2->attributes;
+    unset($attributes['ipanonymize']);
+
+    $oDB->createCommand()->insert("{{surveys_groupsettings}}", $attributes);
 
 }
 /**
